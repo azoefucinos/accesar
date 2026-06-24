@@ -1,0 +1,265 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.75rem;
+  /* Base limpia en blanco / slate muy claro */
+  --background: oklch(0.992 0.004 160);
+  --foreground: oklch(0.19 0.02 165);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.19 0.02 165);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.19 0.02 165);
+  /* Primario esmeralda (accesibilidad = verde) */
+  --primary: oklch(0.54 0.13 163);
+  --primary-foreground: oklch(0.99 0.01 160);
+  --secondary: oklch(0.96 0.01 165);
+  --secondary-foreground: oklch(0.24 0.02 165);
+  --muted: oklch(0.965 0.006 165);
+  /* muted-foreground mas oscuro para mejor contraste WCAG AA */
+  --muted-foreground: oklch(0.45 0.02 165);
+  --accent: oklch(0.95 0.03 165);
+  --accent-foreground: oklch(0.28 0.05 163);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.9 0.01 165);
+  --input: oklch(0.92 0.008 165);
+  --ring: oklch(0.54 0.13 163);
+  --chart-1: oklch(0.54 0.13 163);
+  --chart-2: oklch(0.7 0.16 70);
+  --chart-3: oklch(0.62 0.22 27);
+  --chart-4: oklch(0.6 0.1 200);
+  --chart-5: oklch(0.55 0.12 300);
+  --sidebar: oklch(0.985 0.005 165);
+  --sidebar-foreground: oklch(0.19 0.02 165);
+  --sidebar-primary: oklch(0.54 0.13 163);
+  --sidebar-primary-foreground: oklch(0.99 0.01 160);
+  --sidebar-accent: oklch(0.95 0.03 165);
+  --sidebar-accent-foreground: oklch(0.28 0.05 163);
+  --sidebar-border: oklch(0.9 0.01 165);
+  --sidebar-ring: oklch(0.54 0.13 163);
+  /* sombra suave para tarjetas */
+  --shadow-card: 0 1px 2px 0 oklch(0.2 0.02 165 / 0.04), 0 1px 3px 0 oklch(0.2 0.02 165 / 0.06);
+  --shadow-card-hover: 0 4px 12px -2px oklch(0.2 0.02 165 / 0.08), 0 2px 6px -2px oklch(0.2 0.02 165 / 0.06);
+}
+
+.dark {
+  --background: oklch(0.16 0.015 165);
+  --foreground: oklch(0.97 0.01 160);
+  --card: oklch(0.205 0.018 165);
+  --card-foreground: oklch(0.97 0.01 160);
+  --popover: oklch(0.205 0.018 165);
+  --popover-foreground: oklch(0.97 0.01 160);
+  --primary: oklch(0.72 0.14 163);
+  --primary-foreground: oklch(0.15 0.02 165);
+  --secondary: oklch(0.26 0.02 165);
+  --secondary-foreground: oklch(0.97 0.01 160);
+  --muted: oklch(0.25 0.018 165);
+  --muted-foreground: oklch(0.75 0.02 165);
+  --accent: oklch(0.3 0.04 163);
+  --accent-foreground: oklch(0.97 0.01 160);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.72 0.14 163);
+  --chart-1: oklch(0.72 0.14 163);
+  --chart-2: oklch(0.78 0.16 70);
+  --chart-3: oklch(0.68 0.2 27);
+  --chart-4: oklch(0.66 0.1 200);
+  --chart-5: oklch(0.62 0.13 300);
+  --sidebar: oklch(0.205 0.018 165);
+  --sidebar-foreground: oklch(0.97 0.01 160);
+  --sidebar-primary: oklch(0.72 0.14 163);
+  --sidebar-primary-foreground: oklch(0.15 0.02 165);
+  --sidebar-accent: oklch(0.3 0.04 163);
+  --sidebar-accent-foreground: oklch(0.97 0.01 160);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.72 0.14 163);
+  --shadow-card: 0 1px 2px 0 oklch(0 0 0 / 0.3), 0 1px 3px 0 oklch(0 0 0 / 0.4);
+  --shadow-card-hover: 0 4px 12px -2px oklch(0 0 0 / 0.4), 0 2px 6px -2px oklch(0 0 0 / 0.3);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Scrollbar estilizada */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.8 0.02 165) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: oklch(0.82 0.02 165);
+    border-radius: 9999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.7 0.04 165);
+  }
+  .dark *::-webkit-scrollbar-thumb {
+    background-color: oklch(0.4 0.02 165);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .grid-pattern {
+    background-image: linear-gradient(
+        to right,
+        oklch(0.9 0.01 165 / 0.6) 1px,
+        transparent 1px
+      ),
+      linear-gradient(to bottom, oklch(0.9 0.01 165 / 0.6) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .dark .grid-pattern {
+    background-image: linear-gradient(
+        to right,
+        oklch(1 0 0 / 0.05) 1px,
+        transparent 1px
+      ),
+      linear-gradient(to bottom, oklch(1 0 0 / 0.05) 1px, transparent 1px);
+  }
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+  /* Tarjetas con sombra suave y hover */
+  .card-elevated {
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  }
+  .card-elevated:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+  .card-hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+  }
+  /* Animacion de entrada sutil */
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-in-up {
+    animation: fade-in-up 0.4s ease-out both;
+  }
+  @keyframes count-up {
+    from {
+      opacity: 0.4;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .animate-count-up {
+    animation: count-up 0.5s ease-out both;
+  }
+  /* ocultar scrollbar manteniendo scroll */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Leaflet: contener z-index dentro del mapa para que no se superponga
+   con selects, dialogs y otros overlays de la pagina.
+   Fuera de @layer para tener mayor especificidad que el CSS de Leaflet. */
+.leaflet-container {
+  z-index: 0;
+  background: var(--color-muted, #f1f5f9);
+}
+.leaflet-pane,
+.leaflet-control,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 1 !important;
+}
+.leaflet-popup-pane {
+  z-index: 2 !important;
+}
+/* Ocultar atribucion de OpenStreetMap (el callejero se sigue usando) */
+.leaflet-control-attribution {
+  display: none !important;
+}
+/* Popups de Leaflet con mejor estetica */
+.leaflet-popup-content-wrapper {
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+.leaflet-popup-content {
+  margin: 10px 12px;
+  font-family: var(--font-sans, sans-serif);
+}
+.accesar-marker,
+.accesar-picker {
+  background: transparent !important;
+  border: none !important;
+}

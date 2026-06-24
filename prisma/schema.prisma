@@ -1,0 +1,47 @@
+// AccesAR - Prisma schema
+// Plataforma colaborativa para identificar barreras urbanas de accesibilidad
+//
+// Funciona en:
+//   - Local (SQLite en archivo) con DATABASE_URL=file:./prisma/dev.db
+//   - Producción (Turso / libSQL) con TURSO_DATABASE_URL + TURSO_AUTH_TOKEN
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Report {
+  id           String   @id @default(cuid())
+  // Categoria de la barrera
+  category     String
+  // severidad: grave | moderada | accesible
+  severity     String
+  // descripcion opcional del reporte
+  description  String?
+  // direccion legible
+  address      String
+  // barrio / zona
+  neighborhood String
+  // coordenadas (simuladas sobre un plano de ciudad)
+  lat          Float
+  lng          Float
+  // foto en base64 data URL o ruta relativa
+  imageUrl     String?
+  // estado del reporte: activo | en_proceso | resuelto
+  status       String   @default("activo")
+  // contador de confirmaciones ciudadanas (votos)
+  upvotes      Int      @default(0)
+  // fecha de resolucion (cuando status pasa a resuelto)
+  resolvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([neighborhood])
+  @@index([category])
+  @@index([severity])
+  @@index([status])
+}

@@ -1,0 +1,62 @@
+{
+  "name": "AccesAR — Plataforma colaborativa de accesibilidad urbana",
+  "short_name": "AccesAR",
+  "description": "Identificá y visibilizá barreras urbanas. Reportá, explorá el mapa y contribuí a una ciudad más inclusiva.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "categories": ["navigation", "lifestyle", "social"],
+  "lang": "es-AR",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Reportar barrera",
+      "short_name": "Reportar",
+      "description": "Cargá una nueva barrera urbana con foto y ubicación",
+      "url": "/?v=reportar",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ver mapa",
+      "short_name": "Mapa",
+      "description": "Explorá las barreras en el mapa interactivo",
+      "url": "/?v=mapa",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Índice de barrios",
+      "short_name": "Índice",
+      "description": "Ranking de accesibilidad por barrio",
+      "url": "/?v=indice",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
