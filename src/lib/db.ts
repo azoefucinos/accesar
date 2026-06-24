@@ -29,9 +29,26 @@ function createPrismaClient(): PrismaClient {
   const tursoUrl = process.env.TURSO_DATABASE_URL
   const tursoToken = process.env.TURSO_AUTH_TOKEN
 
-  if (tursoUrl && tursoUrl.startsWith('libsql://')) {
+  // Debug: log sin exponer el valor completo
+  if (process.env.NODE_ENV === 'production') {
+    console.log('[db] TURSO_DATABASE_URL defined:', !!tursoUrl, 'len:', tursoUrl?.length ?? 0)
+    console.log('[db] TURSO_AUTH_TOKEN defined:', !!tursoToken, 'len:', tursoToken?.length ?? 0)
+    console.log('[db] DATABASE_URL defined:', !!process.env.DATABASE_URL)
+  }
+
+  // Filtrar el caso en que la variable sea literalmente la string "undefined"
+  // (pasa si en Vercel se guardó mal, ej: nombre=valor en vez de solo valor)
+  const cleanTursoUrl =
+    tursoUrl && tursoUrl !== 'undefined' && tursoUrl.length > 0 ? tursoUrl : undefined
+
+  if (cleanTursoUrl && cleanTursoUrl.startsWith('libsql://')) {
+    if (!tursoToken || tursoToken === 'undefined') {
+      throw new Error(
+        'TURSO_AUTH_TOKEN no está definido. Revisá las variables de entorno en Vercel.'
+      )
+    }
     const libsql = createClient({
-      url: tursoUrl,
+      url: cleanTursoUrl,
       authToken: tursoToken,
     })
     const adapter = new PrismaLibSql(libsql)
