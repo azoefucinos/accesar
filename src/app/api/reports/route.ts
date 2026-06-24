@@ -47,10 +47,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ reports });
   } catch (e) {
     console.error("GET /api/reports error", e);
-    return NextResponse.json(
-      { error: "Error al obtener reportes" },
-      { status: 500 }
-    );
+    // Devolver info detallada del error para debug
+    const errorInfo: Record<string, unknown> = {
+      error: "Error al obtener reportes",
+      message: e instanceof Error ? e.message : String(e),
+      code: (e as { code?: string })?.code,
+    };
+    if (e instanceof Error && 'meta' in e) {
+      try {
+        errorInfo.meta = JSON.stringify((e as { meta: unknown }).meta);
+      } catch {
+        /* ignore */
+      }
+    }
+    return NextResponse.json(errorInfo, { status: 500 });
   }
 }
 
@@ -61,13 +71,13 @@ export async function POST(req: NextRequest) {
 
     if (!body.category || !isValidCategory(body.category)) {
       return NextResponse.json(
-        { error: "Categoría inválida" },
+        { error: "Categoría inválida", received: body.category },
         { status: 400 }
       );
     }
     if (!body.severity || !isValidSeverity(body.severity)) {
       return NextResponse.json(
-        { error: "Severidad inválida" },
+        { error: "Severidad inválida", received: body.severity },
         { status: 400 }
       );
     }
@@ -90,7 +100,7 @@ export async function POST(req: NextRequest) {
       Number.isNaN(body.lng)
     ) {
       return NextResponse.json(
-        { error: "Coordenadas inválidas" },
+        { error: "Coordenadas inválidas", received: { lat: body.lat, lng: body.lng } },
         { status: 400 }
       );
     }
@@ -112,9 +122,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ report: created }, { status: 201 });
   } catch (e) {
     console.error("POST /api/reports error", e);
-    return NextResponse.json(
-      { error: "Error al crear el reporte" },
-      { status: 500 }
-    );
+    // Devolver info detallada del error para debug
+    const errorInfo: Record<string, unknown> = {
+      error: "Error al crear el reporte",
+      message: e instanceof Error ? e.message : String(e),
+      code: (e as { code?: string })?.code,
+      name: e instanceof Error ? e.name : "Unknown",
+    };
+    if (e instanceof Error && 'meta' in e) {
+      try {
+        errorInfo.meta = JSON.stringify((e as { meta: unknown }).meta);
+      } catch {
+        /* ignore */
+      }
+    }
+    return NextResponse.json(errorInfo, { status: 500 });
   }
 }
