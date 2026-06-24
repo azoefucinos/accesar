@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getDb, rowToReport } from "@/lib/db-client";
 import type { Category, DashboardStats, ReportStatus, Severity } from "@/lib/types";
 import { CATEGORY_LABEL, NEIGHBORHOOD_NAMES } from "@/lib/constants";
 
@@ -8,34 +8,36 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const days = searchParams.get("days");
 
-    const where: Record<string, unknown> = {};
+    const db = getDb();
+    let result;
     if (days) {
       const n = parseInt(days, 10);
       if (!Number.isNaN(n) && n > 0) {
         const since = new Date();
         since.setDate(since.getDate() - n);
-        where.createdAt = { gte: since };
+        result = await db.execute({
+          sql: "SELECT * FROM Report WHERE createdAt >= ? ORDER BY createdAt DESC",
+          args: [since.toISOString()],
+        });
+      } else {
+        result = await db.execute("SELECT * FROM Report ORDER BY createdAt DESC");
       }
+    } else {
+      result = await db.execute("SELECT * FROM Report ORDER BY createdAt DESC");
     }
 
-    const reports = await db.report.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-    });
+    const reports = result.rows.map((row) => rowToReport(row as Record<string, unknown>));
 
     const totalReports = reports.length;
     const totalNeighborhoods = new Set(reports.map((r) => r.neighborhood)).size;
     const totalBarriers = reports.filter(
       (r) => r.severity === "grave" || r.severity === "moderada"
     ).length;
-    const accessibleSpaces = reports.filter(
-      (r) => r.severity === "accesible"
-    ).length;
+    const accessibleSpaces = reports.filter((r) => r.severity === "accesible").length;
     const resolvedCount = reports.filter((r) => r.status === "resuelto").length;
     const totalUpvotes = reports.reduce((sum, r) => sum + (r.upvotes || 0), 0);
     const totalConfirmations = totalUpvotes;
 
-    // por categoria
     const catMap = new Map<Category, number>();
     for (const r of reports) {
       catMap.set(r.category as Category, (catMap.get(r.category as Category) || 0) + 1);
@@ -48,7 +50,6 @@ export async function GET(req: NextRequest) {
       }))
       .sort((a, b) => b.count - a.count);
 
-    // por severidad
     const sevMap = new Map<Severity, number>();
     for (const r of reports) {
       sevMap.set(r.severity as Severity, (sevMap.get(r.severity as Severity) || 0) + 1);
@@ -57,7 +58,6 @@ export async function GET(req: NextRequest) {
       (severity) => ({ severity, count: sevMap.get(severity) || 0 })
     );
 
-    // por barrio
     const neighMap = new Map<string, number>();
     for (const r of reports) {
       neighMap.set(r.neighborhood, (neighMap.get(r.neighborhood) || 0) + 1);
@@ -69,19 +69,14 @@ export async function GET(req: NextRequest) {
       .filter((x) => x.count > 0)
       .sort((a, b) => b.count - a.count);
 
-    // por estado
     const statusMap = new Map<ReportStatus, number>();
     for (const r of reports) {
-      statusMap.set(
-        r.status as ReportStatus,
-        (statusMap.get(r.status as ReportStatus) || 0) + 1
-      );
+      statusMap.set(r.status as ReportStatus, (statusMap.get(r.status as ReportStatus) || 0) + 1);
     }
     const byStatus = (["activo", "en_proceso", "resuelto"] as ReportStatus[]).map(
       (status) => ({ status, count: statusMap.get(status) || 0 })
     );
 
-    // evolucion temporal por mes (ultimos 6 meses)
     const now = new Date();
     const months: { month: string; count: number; key: string }[] = [];
     for (let i = 5; i >= 0; i--) {
@@ -97,7 +92,6 @@ export async function GET(req: NextRequest) {
       if (m) m.count++;
     }
 
-    // tendencia reciente (ultimos 14 dias)
     const recentTrend: { date: string; count: number }[] = [];
     for (let i = 13; i >= 0; i--) {
       const d = new Date();
@@ -137,7 +131,7 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     console.error("GET /api/stats error", e);
     return NextResponse.json(
-      { error: "Error al obtener estadísticas" },
+      { error: "Error al obtener estadísticas", message: e instanceof Error ? e.message : String(e) },
       { status: 500 }
     );
   }

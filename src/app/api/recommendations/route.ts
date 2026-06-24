@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getDb, rowToReport } from "@/lib/db-client";
 import type { Category, Recommendation } from "@/lib/types";
 import { CATEGORY_LABEL } from "@/lib/constants";
 
 export async function GET() {
   try {
-    const reports = await db.report.findMany();
+    const db = getDb();
+    const result = await db.execute("SELECT * FROM Report");
+    const reports = result.rows.map((row) => rowToReport(row as Record<string, unknown>));
 
-    // Agrupar por barrio + categoria
     const matrix = new Map<string, Map<Category, { grave: number; total: number }>>();
     for (const r of reports) {
       if (!matrix.has(r.neighborhood)) matrix.set(r.neighborhood, new Map());
@@ -56,7 +57,6 @@ export async function GET() {
 
     for (const [neighborhood, catMap] of matrix.entries()) {
       for (const [cat, entry] of catMap.entries()) {
-        // Solo recomendar si hay al menos 2 reportes de esa categoria en el barrio
         if (entry.total < 2) continue;
         let priority: Recommendation["priority"] = "baja";
         if (entry.grave >= 2 || entry.total >= 4) priority = "alta";
@@ -72,7 +72,6 @@ export async function GET() {
       }
     }
 
-    // Ordenar por prioridad
     const order = { alta: 0, media: 1, baja: 2 };
     recommendations.sort((a, b) => order[a.priority] - order[b.priority]);
 
@@ -80,7 +79,7 @@ export async function GET() {
   } catch (e) {
     console.error("GET /api/recommendations error", e);
     return NextResponse.json(
-      { error: "Error al generar recomendaciones" },
+      { error: "Error al generar recomendaciones", message: e instanceof Error ? e.message : String(e) },
       { status: 500 }
     );
   }

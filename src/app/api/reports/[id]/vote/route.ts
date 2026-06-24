@@ -1,39 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getDb } from "@/lib/db-client";
 
 // POST /api/reports/[id]/vote
-// Suma una confirmacion ciudadana al reporte (upvote).
-// MVP colaborativo: sin auth, cualquier persona puede confirmar.
-// Usamos localStorage en el cliente para evitar votos duplicados.
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const db = getDb();
 
-    const existing = await db.report.findUnique({ where: { id } });
-    if (!existing) {
+    const existingResult = await db.execute({
+      sql: "SELECT id, upvotes FROM Report WHERE id = ?",
+      args: [id],
+    });
+    if (existingResult.rows.length === 0) {
       return NextResponse.json(
         { error: "Reporte no encontrado" },
         { status: 404 }
       );
     }
 
-    const updated = await db.report.update({
-      where: { id },
-      data: { upvotes: { increment: 1 } },
+    await db.execute({
+      sql: "UPDATE Report SET upvotes = upvotes + 1, updatedAt = ? WHERE id = ?",
+      args: [new Date().toISOString(), id],
     });
+
+    const updatedResult = await db.execute({
+      sql: "SELECT upvotes FROM Report WHERE id = ?",
+      args: [id],
+    });
+    const upvotes = Number(updatedResult.rows[0]?.upvotes ?? 0);
 
     return NextResponse.json({
       success: true,
       id,
-      upvotes: updated.upvotes,
+      upvotes,
     });
   } catch (e) {
     console.error("POST /api/reports/[id]/vote error", e);
     return NextResponse.json(
-      { error: "Error al registrar la confirmación" },
+      { error: "Error al registrar la confirmación", message: e instanceof Error ? e.message : String(e) },
       { status: 500 }
     );
   }

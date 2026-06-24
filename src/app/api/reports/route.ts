@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getDb, rowToReport, generateId, type ReportRow } from "@/lib/db-client";
 import type { Category, CreateReportInput, ReportStatus, Severity } from "@/lib/types";
 import { CATEGORIES, SEVERITIES, STATUSES } from "@/lib/constants";
 
@@ -24,42 +24,52 @@ export async function GET(req: NextRequest) {
     const days = searchParams.get("days");
     const limit = Number(searchParams.get("limit") || "500");
 
-    const where: Record<string, unknown> = {};
-    if (category && isValidCategory(category)) where.category = category;
-    if (severity && isValidSeverity(severity)) where.severity = severity;
-    if (neighborhood) where.neighborhood = neighborhood;
-    if (status && isValidStatus(status)) where.status = status;
+    const conditions: string[] = [];
+    const args: unknown[] = [];
+    if (category && isValidCategory(category)) {
+      conditions.push("category = ?");
+      args.push(category);
+    }
+    if (severity && isValidSeverity(severity)) {
+      conditions.push("severity = ?");
+      args.push(severity);
+    }
+    if (neighborhood) {
+      conditions.push("neighborhood = ?");
+      args.push(neighborhood);
+    }
+    if (status && isValidStatus(status)) {
+      conditions.push("status = ?");
+      args.push(status);
+    }
     if (days) {
       const n = parseInt(days, 10);
       if (!Number.isNaN(n) && n > 0) {
         const since = new Date();
         since.setDate(since.getDate() - n);
-        where.createdAt = { gte: since };
+        conditions.push("createdAt >= ?");
+        args.push(since.toISOString());
       }
     }
 
-    const reports = await db.report.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: Math.min(limit, 1000),
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const safeLimit = Math.min(limit, 1000);
+
+    const db = getDb();
+    const result = await db.execute({
+      sql: `SELECT * FROM Report ${whereClause} ORDER BY createdAt DESC LIMIT ?`,
+      args: [...args, safeLimit],
     });
 
+    const reports = result.rows.map((row) => rowToReport(row as Record<string, unknown>));
     return NextResponse.json({ reports });
   } catch (e) {
     console.error("GET /api/reports error", e);
-    // Devolver info detallada del error para debug
     const errorInfo: Record<string, unknown> = {
       error: "Error al obtener reportes",
       message: e instanceof Error ? e.message : String(e),
       code: (e as { code?: string })?.code,
     };
-    if (e instanceof Error && 'meta' in e) {
-      try {
-        errorInfo.meta = JSON.stringify((e as { meta: unknown }).meta);
-      } catch {
-        /* ignore */
-      }
-    }
     return NextResponse.json(errorInfo, { status: 500 });
   }
 }
@@ -105,37 +115,56 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const created = await db.report.create({
-      data: {
-        category: body.category,
-        severity: body.severity,
-        description: body.description?.trim() || null,
-        address: body.address.trim(),
-        neighborhood: body.neighborhood.trim(),
-        lat: body.lat,
-        lng: body.lng,
-        imageUrl: body.imageUrl || null,
-        status: "activo",
-      },
+    const id = generateId();
+    const now = new Date().toISOString();
+    const description = body.description?.trim() || null;
+    const imageUrl = body.imageUrl || null;
+
+    const db = getDb();
+    await db.execute({
+      sql: `INSERT INTO Report (id, category, severity, description, address, neighborhood, lat, lng, imageUrl, status, upvotes, resolvedAt, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        body.category,
+        body.severity,
+        description,
+        body.address.trim(),
+        body.neighborhood.trim(),
+        body.lat,
+        body.lng,
+        imageUrl,
+        "activo",
+        0,
+        null,
+        now,
+        now,
+      ],
     });
 
+    // Fetch the created report
+    const result = await db.execute({
+      sql: "SELECT * FROM Report WHERE id = ?",
+      args: [id],
+    });
+
+    if (result.rows.length === 0) {
+      return NextResponse.json(
+        { error: "Error: reporte creado pero no encontrado" },
+        { status: 500 }
+      );
+    }
+
+    const created = rowToReport(result.rows[0] as Record<string, unknown>);
     return NextResponse.json({ report: created }, { status: 201 });
   } catch (e) {
     console.error("POST /api/reports error", e);
-    // Devolver info detallada del error para debug
     const errorInfo: Record<string, unknown> = {
       error: "Error al crear el reporte",
       message: e instanceof Error ? e.message : String(e),
       code: (e as { code?: string })?.code,
       name: e instanceof Error ? e.name : "Unknown",
     };
-    if (e instanceof Error && 'meta' in e) {
-      try {
-        errorInfo.meta = JSON.stringify((e as { meta: unknown }).meta);
-      } catch {
-        /* ignore */
-      }
-    }
     return NextResponse.json(errorInfo, { status: 500 });
   }
 }

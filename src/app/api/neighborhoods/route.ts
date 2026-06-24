@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getDb, rowToReport } from "@/lib/db-client";
 import type { NeighborhoodStat, Severity } from "@/lib/types";
 import { NEIGHBORHOODS } from "@/lib/constants";
 
 export async function GET() {
   try {
-    const reports = await db.report.findMany();
+    const db = getDb();
+    const result = await db.execute("SELECT * FROM Report");
+    const reports = result.rows.map((row) => rowToReport(row as Record<string, unknown>));
 
     const byNeigh = new Map<
       string,
@@ -34,8 +36,6 @@ export async function GET() {
         total: 0,
       };
 
-      // Si no hay ningun reporte para este barrio, lo marcamos como "sin_datos".
-      // No puede ser "el mas accesible" un barrio sobre el que no hay informacion.
       if (e.total === 0) {
         return {
           name: n.name,
@@ -48,8 +48,6 @@ export async function GET() {
         };
       }
 
-      // puntaje 0-100: mayor = mas accesible
-      // penalizacion fuerte por barreras graves, bonus por espacios accesibles
       let score =
         100 - (e.grave * 12 + e.moderada * 6) + e.accesible * 4;
       score = Math.max(0, Math.min(100, Math.round(score)));
@@ -69,15 +67,11 @@ export async function GET() {
         level,
       };
     }).sort((a, b) => {
-      // Barrios con datos primero (por score desc), barrios sin datos al final
       if (a.level === "sin_datos" && b.level !== "sin_datos") return 1;
       if (a.level !== "sin_datos" && b.level === "sin_datos") return -1;
-      // Si ambos tienen datos, ordenar por score descendente
       if (a.level !== "sin_datos" && b.level !== "sin_datos") {
         return b.score - a.score;
       }
-      // Si ambos son sin_datos, ordenar alfabeticamente
-      // (evita que Palermo siempre aparezca primero por orden de declaracion)
       return a.name.localeCompare(b.name, "es");
     });
 
@@ -85,11 +79,10 @@ export async function GET() {
   } catch (e) {
     console.error("GET /api/neighborhoods error", e);
     return NextResponse.json(
-      { error: "Error al obtener índice de accesibilidad" },
+      { error: "Error al obtener índice de accesibilidad", message: e instanceof Error ? e.message : String(e) },
       { status: 500 }
     );
   }
 }
 
-// Helper export para severidad (referencia)
 export type { Severity };

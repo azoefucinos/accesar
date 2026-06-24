@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getDb, rowToReport } from "@/lib/db-client";
 import type { Category, ReportStatus, Severity, UpdateReportInput } from "@/lib/types";
 import {
   CATEGORIES,
@@ -18,31 +18,36 @@ function isValidStatus(v: string): v is ReportStatus {
   return STATUSES.includes(v as ReportStatus);
 }
 
-// GET /api/reports/[id] - obtener un reporte por id
+// GET /api/reports/[id]
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const report = await db.report.findUnique({ where: { id } });
-    if (!report) {
+    const db = getDb();
+    const result = await db.execute({
+      sql: "SELECT * FROM Report WHERE id = ?",
+      args: [id],
+    });
+    if (result.rows.length === 0) {
       return NextResponse.json(
         { error: "Reporte no encontrado" },
         { status: 404 }
       );
     }
+    const report = rowToReport(result.rows[0] as Record<string, unknown>);
     return NextResponse.json({ report });
   } catch (e) {
     console.error("GET /api/reports/[id] error", e);
     return NextResponse.json(
-      { error: "Error al obtener el reporte" },
+      { error: "Error al obtener el reporte", message: e instanceof Error ? e.message : String(e) },
       { status: 500 }
     );
   }
 }
 
-// PATCH /api/reports/[id] - editar un reporte (categoria, severidad, descripcion, status, etc.)
+// PATCH /api/reports/[id]
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -50,59 +55,59 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = (await req.json()) as Partial<UpdateReportInput>;
+    const db = getDb();
 
-    const existing = await db.report.findUnique({ where: { id } });
-    if (!existing) {
+    // Verificar que existe
+    const existingResult = await db.execute({
+      sql: "SELECT * FROM Report WHERE id = ?",
+      args: [id],
+    });
+    if (existingResult.rows.length === 0) {
       return NextResponse.json(
         { error: "Reporte no encontrado" },
         { status: 404 }
       );
     }
+    const existing = rowToReport(existingResult.rows[0] as Record<string, unknown>);
 
-    const data: Record<string, unknown> = {};
+    const setClauses: string[] = [];
+    const args: unknown[] = [];
 
     if (body.category !== undefined) {
       if (!isValidCategory(body.category)) {
-        return NextResponse.json(
-          { error: "Categoría inválida" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Categoría inválida" }, { status: 400 });
       }
-      data.category = body.category;
+      setClauses.push("category = ?");
+      args.push(body.category);
     }
 
     if (body.severity !== undefined) {
       if (!isValidSeverity(body.severity)) {
-        return NextResponse.json(
-          { error: "Severidad inválida" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Severidad inválida" }, { status: 400 });
       }
-      data.severity = body.severity;
+      setClauses.push("severity = ?");
+      args.push(body.severity);
     }
 
     if (body.description !== undefined) {
-      data.description = body.description?.trim() || null;
+      setClauses.push("description = ?");
+      args.push(body.description?.trim() || null);
     }
 
     if (body.address !== undefined) {
       if (!body.address.trim()) {
-        return NextResponse.json(
-          { error: "La dirección es obligatoria" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "La dirección es obligatoria" }, { status: 400 });
       }
-      data.address = body.address.trim();
+      setClauses.push("address = ?");
+      args.push(body.address.trim());
     }
 
     if (body.neighborhood !== undefined) {
       if (!NEIGHBORHOOD_NAMES.includes(body.neighborhood)) {
-        return NextResponse.json(
-          { error: "Barrio inválido" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Barrio inválido" }, { status: 400 });
       }
-      data.neighborhood = body.neighborhood;
+      setClauses.push("neighborhood = ?");
+      args.push(body.neighborhood);
     }
 
     if (body.lat !== undefined && body.lng !== undefined) {
@@ -112,49 +117,60 @@ export async function PATCH(
         Number.isNaN(body.lat) ||
         Number.isNaN(body.lng)
       ) {
-        return NextResponse.json(
-          { error: "Coordenadas inválidas" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Coordenadas inválidas" }, { status: 400 });
       }
-      data.lat = body.lat;
-      data.lng = body.lng;
+      setClauses.push("lat = ?");
+      args.push(body.lat);
+      setClauses.push("lng = ?");
+      args.push(body.lng);
     }
 
     if (body.status !== undefined) {
       if (!isValidStatus(body.status)) {
-        return NextResponse.json(
-          { error: "Estado inválido" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
       }
-      data.status = body.status;
-      // Si pasa a resuelto, marcar fecha de resolucion
+      setClauses.push("status = ?");
+      args.push(body.status);
       if (body.status === "resuelto" && !existing.resolvedAt) {
-        data.resolvedAt = new Date();
+        setClauses.push("resolvedAt = ?");
+        args.push(new Date().toISOString());
       } else if (body.status !== "resuelto") {
-        data.resolvedAt = null;
+        setClauses.push("resolvedAt = ?");
+        args.push(null);
       }
     }
 
-    const updated = await db.report.update({
-      where: { id },
-      data,
+    if (setClauses.length === 0) {
+      // Nada que actualizar
+      return NextResponse.json({ report: existing });
+    }
+
+    setClauses.push("updatedAt = ?");
+    args.push(new Date().toISOString());
+    args.push(id);
+
+    await db.execute({
+      sql: `UPDATE Report SET ${setClauses.join(", ")} WHERE id = ?`,
+      args,
     });
 
+    // Fetch updated
+    const updatedResult = await db.execute({
+      sql: "SELECT * FROM Report WHERE id = ?",
+      args: [id],
+    });
+    const updated = rowToReport(updatedResult.rows[0] as Record<string, unknown>);
     return NextResponse.json({ report: updated });
   } catch (e) {
     console.error("PATCH /api/reports/[id] error", e);
     return NextResponse.json(
-      { error: "Error al actualizar el reporte" },
+      { error: "Error al actualizar el reporte", message: e instanceof Error ? e.message : String(e) },
       { status: 500 }
     );
   }
 }
 
 // DELETE /api/reports/[id]
-// Elimina un reporte por su id. Cualquier persona puede eliminar un reporte
-// (MVP colaborativo: la comunidad modera el contenido).
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -168,22 +184,28 @@ export async function DELETE(
       );
     }
 
-    // Verificar que existe antes de borrar
-    const existing = await db.report.findUnique({ where: { id } });
-    if (!existing) {
+    const db = getDb();
+    const existingResult = await db.execute({
+      sql: "SELECT id FROM Report WHERE id = ?",
+      args: [id],
+    });
+    if (existingResult.rows.length === 0) {
       return NextResponse.json(
         { error: "Reporte no encontrado" },
         { status: 404 }
       );
     }
 
-    await db.report.delete({ where: { id } });
+    await db.execute({
+      sql: "DELETE FROM Report WHERE id = ?",
+      args: [id],
+    });
 
     return NextResponse.json({ success: true, id });
   } catch (e) {
     console.error("DELETE /api/reports/[id] error", e);
     return NextResponse.json(
-      { error: "Error al eliminar el reporte" },
+      { error: "Error al eliminar el reporte", message: e instanceof Error ? e.message : String(e) },
       { status: 500 }
     );
   }
